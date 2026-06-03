@@ -15,35 +15,15 @@
 
   <div id="toast-container"></div>
 
-  <!-- ── Tutorial overlay ───────────────────────────────────────── -->
-  <div class="tutorial-overlay" id="tutorial-overlay">
-    <div class="tutorial-box" id="tutorial-box">
-      <div class="tutorial-progress" id="tutorial-progress"></div>
-      <div class="tutorial-icon" id="tutorial-icon"></div>
-      <div class="tutorial-content">
-        <h3 class="tutorial-title" id="tutorial-title"></h3>
-        <p class="tutorial-body" id="tutorial-body"></p>
-      </div>
-      <div class="tutorial-footer">
-        <button class="tutorial-skip" onclick="skipTutorial()">Skip tutorial</button>
-        <div class="tutorial-nav">
-          <button class="tutorial-btn tutorial-prev" id="tutorial-prev" onclick="tutorialStep(-1)">← Back</button>
-          <button class="tutorial-btn tutorial-next" id="tutorial-next" onclick="tutorialStep(1)">Next →</button>
-        </div>
-      </div>
-      <div class="tutorial-highlight" id="tutorial-highlight"></div>
-    </div>
-  </div>
-
   <!-- ── Card detail modal ──────────────────────────────────────── -->
   <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
     <div class="modal modal-card-detail" id="card-modal">
-      <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('active'); if(priceChart){priceChart.destroy();priceChart=null;}">✕</button>
+      <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('active')">✕</button>
       <div class="modal-type-bar" id="modal-type-bar"></div>
 
       <div class="modal-tabs">
         <button class="modal-tab active" id="modal-tab-info"  onclick="switchModalTab('info')">Card Info</button>
-        <button class="modal-tab"        id="modal-tab-image" onclick="switchModalTab('image')">Card Image</button>
+        <button class="modal-tab"        id="modal-tab-image" onclick="switchModalTabWithPicker('image')">Card Image</button>
       </div>
 
       <div id="modal-panel-info">
@@ -104,35 +84,31 @@
 
       <div id="modal-panel-image" style="display:none;">
         <div class="modal-image-tab-wrap">
+          <div id="modal-image-loading" class="modal-image-loading">
+            <div class="modal-image-spinner"></div>
+            <p>Fetching card art…</p>
+          </div>
           <div id="modal-image-found" style="display:none;">
             <img id="modal-card-image-large" class="modal-card-image-large" alt="Card art" />
             <p class="modal-image-caption" id="modal-image-caption"></p>
           </div>
-          <div id="modal-image-notfound" class="modal-image-notfound">
+          <div id="modal-image-notfound" style="display:none;" class="modal-image-notfound">
             <div style="font-size:48px; margin-bottom:16px;">🔍</div>
-            <p>No card image stored for this card.</p>
-            <p style="font-size:11px; margin-top:8px; color:var(--text3);">Images are saved when you add a card via the picker.</p>
+            <p>No card art found for this card.</p>
+            <p style="font-size:11px; margin-top:8px; color:var(--text3);">Try editing the card name or set to improve results.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── Add-card picker modal ──────────────────────────────────── -->
-  <div class="modal-overlay" id="add-picker-overlay">
-    <div class="modal picker-modal picker-mode-add">
-      <button class="modal-close" onclick="closeAddPicker()">✕</button>
-      <h2 class="picker-heading" id="add-picker-title">Select your card</h2>
-      <p class="picker-subheading">Multiple versions found — click the one you own, then confirm below</p>
-      <div class="picker-search-wrap">
-        <span class="picker-search-icon">⌕</span>
-        <input type="text" class="picker-search" id="add-picker-search" placeholder="Filter results…" oninput="filterAddPicker()" />
-      </div>
-      <div class="picker-grid" id="add-picker-grid"></div>
-      <div class="picker-footer">
-        <button class="btn-cancel" onclick="closeAddPicker()">Cancel</button>
-        <button class="btn-primary" id="add-picker-confirm" onclick="confirmAddPicker()" disabled>Add selected card</button>
-      </div>
+  <!-- ── Card picker modal ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="picker-overlay">
+    <div class="modal picker-modal">
+      <button class="modal-close" onclick="closePickerModal()">✕</button>
+      <h2 class="picker-heading" id="picker-title">Select the correct card</h2>
+      <p class="picker-subheading">Multiple versions found — click the one you own</p>
+      <div class="picker-grid" id="picker-grid"></div>
     </div>
   </div>
 
@@ -140,7 +116,7 @@
   <div class="modal-overlay" id="edit-overlay">
     <div class="modal">
       <button class="modal-close" onclick="closeEditModal()">✕</button>
-      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text);">Edit card</h2>
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase;">Edit card</h2>
       <input type="hidden" id="edit-id" />
       <div class="form-grid">
         <div class="form-group">
@@ -150,10 +126,6 @@
         <div class="form-group">
           <label>Set</label>
           <input type="text" id="edit-set" />
-        </div>
-        <div class="form-group">
-          <label>Card number</label>
-          <input type="text" id="edit-card-number" placeholder="e.g. 199/165 or 44" />
         </div>
         <div class="form-group">
           <label>Type</label>
@@ -202,17 +174,17 @@
           <label>Target sell price (SGD)</label>
           <input type="number" id="edit-target" step="0.01" min="0" />
         </div>
-        <div class="form-group">
+        <div class="form-group full">
           <label>Notes</label>
-          <input type="text" id="edit-notes" />
+          <input type="text" id="edit-notes" placeholder="Condition notes, where bought, etc." />
         </div>
-        <div class="form-group">
-          <label>URL</label>
-          <input type="text" id="edit-url" />
+        <div class="form-group full">
+          <label>PriceCharting URL <span style="color:var(--text3); font-weight:400;">(optional)</span></label>
+          <input type="text" id="edit-url" placeholder="Leave blank — prices auto-fetched by name" />
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn-cancel"  onclick="closeEditModal()">Cancel</button>
+        <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
         <button class="btn-primary" onclick="saveEdit()">Save changes</button>
       </div>
     </div>
@@ -222,24 +194,24 @@
   <div class="modal-overlay" id="sell-overlay">
     <div class="modal" style="max-width:420px;">
       <button class="modal-close" onclick="closeSellModal()">✕</button>
-      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text);">Mark as sold</h2>
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase;">Mark as sold</h2>
       <input type="hidden" id="sell-id" />
       <div class="form-grid" style="grid-template-columns:1fr 1fr;">
         <div class="form-group">
           <label>Sale price (SGD)</label>
-          <input type="number" id="sell-price" step="0.01" min="0" />
+          <input type="number" id="sell-price" step="0.01" min="0" placeholder="0.00" />
         </div>
         <div class="form-group">
-          <label>Sale date</label>
+          <label>Date sold</label>
           <input type="date" id="sell-date" />
         </div>
-        <div class="form-group" style="grid-column:1/-1;">
+        <div class="form-group full">
           <label>Sold to (optional)</label>
-          <input type="text" id="sell-to" placeholder="Buyer name / platform" />
+          <input type="text" id="sell-to" placeholder="e.g. eBay buyer, friend..." />
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn-cancel"  onclick="closeSellModal()">Cancel</button>
+        <button class="btn-cancel" onclick="closeSellModal()">Cancel</button>
         <button class="btn-primary" onclick="confirmSell()">Confirm sale</button>
       </div>
     </div>
@@ -249,14 +221,15 @@
   <div class="modal-overlay" id="manual-price-overlay">
     <div class="modal" style="max-width:380px;">
       <button class="modal-close" onclick="closeManualPriceModal()">✕</button>
-      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text);">Set price manually</h2>
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:8px; letter-spacing:0.05em; text-transform:uppercase;">Set price manually</h2>
+      <p style="font-size:12px; color:var(--text3); font-family:var(--font-mono); margin-bottom:20px;">Override the current value for this card.</p>
       <input type="hidden" id="manual-price-id" />
       <div class="form-group" style="margin-bottom:20px;">
         <label>Current value (SGD)</label>
         <input type="number" id="manual-price-val" step="0.01" min="0" placeholder="0.00" />
       </div>
       <div class="form-actions">
-        <button class="btn-cancel"  onclick="closeManualPriceModal()">Cancel</button>
+        <button class="btn-cancel" onclick="closeManualPriceModal()">Cancel</button>
         <button class="btn-primary" onclick="saveManualPrice()">Save price</button>
       </div>
     </div>
@@ -267,7 +240,7 @@
     <div class="modal confirm-modal">
       <p class="confirm-message" id="confirm-message"></p>
       <div class="confirm-actions">
-        <button class="btn-cancel"  id="confirm-cancel">Cancel</button>
+        <button class="btn-cancel" id="confirm-cancel">Cancel</button>
         <button class="btn-danger"  id="confirm-ok">Confirm</button>
       </div>
     </div>
@@ -296,89 +269,95 @@
         </div>
         <div class="header-controls">
           <div class="theme-switcher">
-            <button class="theme-option" data-theme="dark"  onclick="setTheme('dark')"  title="Dark">🌑</button>
-            <button class="theme-option" data-theme="light" onclick="setTheme('light')" title="Light">☀️</button>
+            <button class="theme-option" data-theme="dark"    onclick="setTheme('dark')"    title="Dark">🌑</button>
+            <button class="theme-option" data-theme="light"   onclick="setTheme('light')"   title="Light">☀️</button>
+            <button class="theme-option" data-theme="lucario" onclick="setTheme('lucario')" title="Lucario">⚔️</button>
           </div>
           <label class="color-toggle-label" title="Toggle type colours">
-            <input type="checkbox" id="color-toggle" checked onchange="toggleColors()" />
-            <div class="color-toggle-track"><div class="color-toggle-thumb"></div></div>
-            <span class="color-toggle-text">Colours</span>
+            <input type="checkbox" id="color-toggle" onchange="toggleColors()" checked />
+            <span class="color-toggle-track"><span class="color-toggle-thumb"></span></span>
+            <span class="color-toggle-text">Type colours</span>
           </label>
           <span class="header-username" id="username-display"></span>
-          <span id="fx-rate" style="font-size:11px; color:var(--text3); font-family:var(--font-mono);"></span>
           <button class="logout-btn" onclick="logout()">Log out</button>
         </div>
       </div>
     </div>
   </header>
 
+  <!-- ── Main content ───────────────────────────────────────────── -->
   <main class="main-content">
+
     <!-- Summary metrics -->
     <div class="summary-grid">
       <div class="metric-card">
-        <div class="metric-icon">🃏</div>
+        <div class="metric-icon">📦</div>
         <div class="metric-body">
           <div class="metric-label">Total cards</div>
           <div class="metric-value" id="s-count">0</div>
         </div>
       </div>
       <div class="metric-card">
-        <div class="metric-icon">💳</div>
+        <div class="metric-icon">🏷️</div>
         <div class="metric-body">
-          <div class="metric-label">Total cost</div>
-          <div class="metric-value" id="s-cost" data-val="0">SGD $0.00</div>
+          <div class="metric-label">Total invested</div>
+          <div class="metric-value" id="s-cost">$0.00</div>
         </div>
       </div>
       <div class="metric-card">
-        <div class="metric-icon">📈</div>
+        <div class="metric-icon">💎</div>
         <div class="metric-body">
-          <div class="metric-label">Portfolio value</div>
-          <div class="metric-value" id="s-value" data-val="0">SGD $0.00</div>
+          <div class="metric-label">Current value</div>
+          <div class="metric-value" id="s-value">$0.00</div>
         </div>
       </div>
       <div class="metric-card profit-card">
-        <div class="metric-icon" id="profit-icon">💰</div>
+        <div class="metric-icon" id="profit-icon">🚀</div>
         <div class="metric-body">
           <div class="metric-label">Unrealised P/L</div>
-          <div class="metric-value" id="s-profit">—</div>
+          <div class="metric-value" id="s-profit">$0.00</div>
         </div>
       </div>
       <div class="metric-card">
-        <div class="metric-icon">🏦</div>
+        <div class="metric-icon">✅</div>
         <div class="metric-body">
-          <div class="metric-label">Realised P/L</div>
-          <div class="metric-value" id="s-realised">—</div>
+          <div class="metric-label">Realised gains</div>
+          <div class="metric-value" id="s-realised">$0.00</div>
         </div>
       </div>
     </div>
 
-    <!-- Top movers -->
+    <!-- Market movers -->
     <div id="movers-section" style="display:none;">
-      <div class="section-label">Top movers</div>
+      <div class="section-label">Market movers</div>
       <div class="movers-grid">
-        <div>
-          <div class="movers-col-label gainers-label">↑ Gainers</div>
-          <div class="movers-list" id="movers-gainers"></div>
+        <div class="movers-col">
+          <div class="movers-col-label gainers-label">↑ Top gainers</div>
+          <div id="movers-gainers" class="movers-list"></div>
         </div>
-        <div>
-          <div class="movers-col-label losers-label">↓ Losers</div>
-          <div class="movers-list" id="movers-losers"></div>
+        <div class="movers-col">
+          <div class="movers-col-label losers-label">↓ Biggest drops</div>
+          <div id="movers-losers" class="movers-list"></div>
         </div>
       </div>
     </div>
 
-    <!-- Collection tabs -->
+    <!-- Collection / Sold tabs -->
     <div class="collection-tabs">
       <button class="col-tab active" id="tab-active" onclick="switchTab('active')">Active collection</button>
       <button class="col-tab"        id="tab-sold"   onclick="switchTab('sold')">Sold cards</button>
     </div>
 
+    <!-- Active panel -->
     <div id="panel-active">
-      <!-- Controls bar -->
       <div class="controls-bar">
         <div class="controls-left">
+          <div class="search-wrap">
+            <span class="search-icon">⌕</span>
+            <input type="text" id="search-input" class="search-input" placeholder="Search cards or sets…" oninput="applySearch()" />
+          </div>
           <div class="filter-group">
-            <select class="filter-select" id="filter-type"   onchange="applyFilter()">
+            <select id="filter-type"   onchange="applyFilter()" class="filter-select">
               <option value="">All types</option>
               <option value="Fire">🔥 Fire</option>
               <option value="Water">💧 Water</option>
@@ -393,22 +372,17 @@
               <option value="Normal">⭐ Normal</option>
               <option value="Colorless">🌀 Colorless</option>
             </select>
-            <select class="filter-select" id="filter-set" onchange="applyFilter()">
+            <select id="filter-set"    onchange="applyFilter()" class="filter-select">
               <option value="">All sets</option>
             </select>
-            <select class="filter-select" id="filter-movers" onchange="applyFilter()">
+            <select id="filter-movers" onchange="applyFilter()" class="filter-select">
               <option value="">All cards</option>
               <option value="gainers">↑ Top gainers</option>
               <option value="losers">↓ Biggest drops</option>
             </select>
           </div>
-          <div class="search-wrap">
-            <span class="search-icon">🔍</span>
-            <input class="search-input" id="search-input" type="text" placeholder="Search cards, sets, numbers…" oninput="applySearch()" />
-          </div>
         </div>
         <div class="controls-right">
-          <span class="last-updated" id="last-updated"></span>
           <button class="btn-refresh" onclick="refreshPrices()">↻ Refresh prices</button>
           <button class="btn-export"  onclick="exportCSV()" title="Export to CSV">↓ Export</button>
           <button class="btn-reset"   onclick="resetVault()" title="Delete all cards">⚠ Reset</button>
@@ -421,16 +395,16 @@
         <div class="form-title">Add new card</div>
         <div class="form-grid">
           <div class="form-group">
-            <label>Card name *</label>
-            <input type="text" id="f-name" placeholder="e.g. Misty's Psyduck, Charizard ex" autocomplete="off" />
+            <label>Card name</label>
+            <input type="text" id="f-name" placeholder="e.g. Mew ex" />
           </div>
           <div class="form-group">
-            <label>Card number <span style="color:var(--text3); font-weight:400;">(recommended)</span></label>
-            <input type="text" id="f-card-number" placeholder="e.g. 199/165 or 44 or SWSH001" autocomplete="off" />
+            <label>Set</label>
+            <input type="text" id="f-set" placeholder="e.g. Paldean Fates" />
           </div>
           <div class="form-group">
-            <label>Set name <span style="color:var(--text3); font-weight:400;">(optional)</span></label>
-            <input type="text" id="f-set" placeholder="e.g. Obsidian Flames, 151" autocomplete="off" />
+            <label>Variant / Promo <span style="color:var(--text3); font-weight:400;">(optional)</span></label>
+            <input type="text" id="f-variant" placeholder="e.g. Pokemon Center, 086/197" />
           </div>
           <div class="form-group">
             <label>Type</label>
@@ -468,7 +442,7 @@
             <input type="number" id="f-quantity" placeholder="1" min="1" step="1" value="1" />
           </div>
           <div class="form-group">
-            <label>Purchase price (SGD) *</label>
+            <label>Purchase price (SGD)</label>
             <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0" />
           </div>
           <div class="form-group">
@@ -479,13 +453,6 @@
             <label>Target sell price (SGD)</label>
             <input type="number" id="f-target" placeholder="0.00" step="0.01" min="0" />
           </div>
-          <div class="form-group form-group-promo">
-            <label class="promo-label">
-              <input type="checkbox" id="f-promo" />
-              <span>Promo / variant print</span>
-            </label>
-            <span class="form-hint">Check for Pokemon Center promos, alternate art variants, etc.</span>
-          </div>
           <div class="form-group full">
             <label>Notes</label>
             <input type="text" id="f-notes" placeholder="Condition notes, where bought, etc." />
@@ -493,7 +460,7 @@
         </div>
         <div class="form-actions">
           <button class="btn-cancel"  onclick="toggleForm()">Cancel</button>
-          <button class="btn-primary" id="btn-search-cards" onclick="searchAndPickCard()">Search cards →</button>
+          <button class="btn-primary" onclick="addCard()">Add to vault</button>
         </div>
       </div>
 
@@ -501,24 +468,22 @@
       <div class="table-wrap" id="table-wrap">
         <table>
           <colgroup>
-            <col style="width:17%">
-            <col style="width:12%">
-            <col style="width:8%">
+            <col style="width:18%">
+            <col style="width:13%">
             <col style="width:9%">
             <col style="width:8%">
             <col style="width:5%">
             <col style="width:9%">
             <col style="width:9%">
-            <col style="width:10%">
-            <col style="width:8%">
-            <col style="width:3%">
-            <col style="width:3%">
+            <col style="width:11%">
+            <col style="width:9%">
+            <col style="width:4%">
+            <col style="width:4%">
           </colgroup>
           <thead>
             <tr>
               <th onclick="sortBy('name')"          class="sortable">Card <span class="sort-arr">↕</span></th>
               <th onclick="sortBy('set')"            class="sortable">Set <span class="sort-arr">↕</span></th>
-              <th>Card #</th>
               <th>Type</th>
               <th>Grade</th>
               <th>Qty</th>
@@ -533,22 +498,35 @@
           <tbody id="card-table"></tbody>
         </table>
       </div>
+      <!-- Mobile list -->
       <div class="card-list" id="card-list"></div>
     </div>
 
+    <!-- Sold panel -->
     <div id="panel-sold" style="display:none;">
+      <div class="sold-summary" id="sold-summary"></div>
       <div class="table-wrap">
         <table>
+          <colgroup>
+            <col style="width:20%">
+            <col style="width:15%">
+            <col style="width:9%">
+            <col style="width:10%">
+            <col style="width:10%">
+            <col style="width:12%">
+            <col style="width:10%">
+            <col style="width:10%">
+            <col style="width:4%">
+          </colgroup>
           <thead>
             <tr>
               <th>Card</th>
               <th>Set</th>
-              <th>Card #</th>
               <th>Grade</th>
               <th>Paid</th>
               <th>Sold for</th>
-              <th>P/L</th>
-              <th>Date</th>
+              <th>Profit</th>
+              <th>Date sold</th>
               <th>Sold to</th>
               <th></th>
             </tr>
@@ -558,6 +536,8 @@
       </div>
       <div class="card-list" id="sold-list"></div>
     </div>
+
+    <p class="last-updated" id="last-updated"><span id="fx-rate"></span></p>
   </main>
 
   <script src="script.js"></script>
