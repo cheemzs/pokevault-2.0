@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -58,7 +58,8 @@
   <script>
     (function () {
       const saved = localStorage.getItem('pv-theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', saved === 'dark' || saved === 'light' ? saved : 'dark');
+      // Migrate dark2 → dark
+      document.documentElement.setAttribute('data-theme', saved === 'dark2' ? 'dark' : saved);
     })();
 
     function showTab(tab) {
@@ -76,7 +77,8 @@
       errEl.textContent = '';
       if (!username || !password) { errEl.textContent = 'Please fill in both fields.'; return; }
       const res  = await fetch('/api/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
@@ -92,7 +94,8 @@
       if (!username || !password)  { errEl.textContent = 'Please fill in both fields.'; return; }
       if (password.length < 6)     { errEl.textContent = 'Password must be at least 6 characters.'; return; }
       const res  = await fetch('/api/register', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
