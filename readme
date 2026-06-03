@@ -1,0 +1,169 @@
+# PokeVault — Pokémon Card Portfolio Tracker
+
+Track your Pokémon TCG collection in SGD with live pricing, P/L tracking, grade multipliers, and portfolio analytics.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Node.js + Express 5 |
+| Database | Supabase (PostgreSQL) |
+| Auth | express-session + bcryptjs |
+| Session store | connect-pg-simple (PostgreSQL) |
+| Pricing API | PokéPrice.io |
+| Frontend | Vanilla HTML/CSS/JS + Chart.js 4 |
+| Hosting | Render (web service) |
+
+---
+
+## File Structure
+
+```
+pokevault/
+├── server.js           # Express backend — all API routes
+├── index.html          # Main collection page
+├── stats.html          # Portfolio analytics page
+├── login.html          # Login / register page
+├── script.js           # Frontend logic for index.html
+├── style.css           # Shared stylesheet (dark + light themes)
+├── pfp.jpeg            # Brand logo / favicon
+├── package.json        # Dependencies
+├── .env.example        # Environment variable template
+├── .gitignore
+└── supabase_schema.sql # Run this once in Supabase SQL Editor
+```
+
+---
+
+## Phase 1 — Supabase Setup (Database)
+
+### Option A: Fresh Supabase project (recommended)
+
+1. Go to [supabase.com](https://supabase.com) → **New project**
+2. Choose a name (e.g. `pokevault`), set a strong database password, pick a region close to Singapore (e.g. Southeast Asia / Singapore)
+3. Wait ~2 minutes for provisioning
+
+### Run the schema
+
+1. In your Supabase dashboard → **SQL Editor** → **New query**
+2. Paste the entire contents of `supabase_schema.sql`
+3. Click **Run** — you should see "Success. No rows returned"
+
+### Collect your credentials
+
+You need 3 values from Supabase:
+
+| Value | Where to find it |
+|---|---|
+| `SUPABASE_URL` | Dashboard → Project Settings → API → **Project URL** |
+| `SUPABASE_KEY` | Dashboard → Project Settings → API → **anon / public** key |
+| `DATABASE_URL` | Dashboard → Project Settings → Database → **Connection string** → **URI** tab → choose **"Direct connection"** (port 5432) |
+
+> ⚠️ **Critical:** For `DATABASE_URL`, use the **Direct connection** URI (port **5432**), NOT the Session Mode or Transaction Mode pooler (port 6543). The pooler URL format breaks `connect-pg-simple`.
+
+The direct URI looks like:
+```
+postgresql://postgres:[YOUR-PASSWORD]@db.abcdefghijkl.supabase.co:5432/postgres
+```
+
+---
+
+## Phase 2 — Render Deployment
+
+### Create a new Web Service
+
+1. Go to [render.com](https://render.com) → **New** → **Web Service**
+2. Connect your GitHub repo containing this codebase
+3. Configure:
+   - **Name:** `pokevault` (or anything)
+   - **Runtime:** Node
+   - **Build command:** `npm install`
+   - **Start command:** `npm start`
+   - **Instance type:** Free (or paid for better performance)
+
+### Set Environment Variables
+
+In Render → your service → **Environment** → add these 5 variables:
+
+| Variable | Value |
+|---|---|
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_KEY` | Your Supabase anon/public key |
+| `DATABASE_URL` | Your Supabase direct connection URI (port 5432) |
+| `POKEPRICE_KEY` | Your PokéPrice API key |
+| `SESSION_SECRET` | Any random string, 32+ characters |
+
+To generate a secure `SESSION_SECRET`, visit: https://generate-secret.vercel.app/32
+
+### Deploy
+
+Click **Deploy** (or it auto-deploys on git push). First deploy takes ~2 minutes.
+
+---
+
+## Phase 3 — Verification Checklist
+
+After deploy, visit your Render URL and check:
+
+- [ ] Login page loads at `/login.html`
+- [ ] You can register a new account
+- [ ] You can log in
+- [ ] Main collection page loads (redirects from `/`)
+- [ ] "Add card" form opens and card search works
+- [ ] "↻ Refresh prices" fetches prices successfully
+- [ ] Stats page at `/stats.html` loads charts
+
+If you see a 500 error, check Render logs (Dashboard → your service → **Logs**). The most common cause is a missing or malformed `DATABASE_URL`.
+
+---
+
+## Local Development
+
+```bash
+# 1. Clone / copy files
+# 2. Create .env from template
+cp .env.example .env
+# Edit .env with your real values
+
+# 3. Install dependencies
+npm install
+
+# 4. Run
+npm start
+# or with auto-restart:
+npm run dev
+```
+
+App runs at http://localhost:5000
+
+---
+
+## Environment Variables Reference
+
+| Variable | Required | Description |
+|---|---|---|
+| `SUPABASE_URL` | ✅ | Supabase project URL |
+| `SUPABASE_KEY` | ✅ | Supabase anon public key |
+| `DATABASE_URL` | ✅ | PostgreSQL direct connection URI (port 5432) |
+| `POKEPRICE_KEY` | ✅ | PokéPrice.io API key |
+| `SESSION_SECRET` | ✅ | Secret for signing session cookies |
+| `PORT` | auto | Render sets this automatically |
+
+---
+
+## Features
+
+- **Multi-user** auth with hashed passwords (bcryptjs)
+- **Card search** via PokéPrice API with visual picker
+- **Live pricing** in SGD with USD/SGD FX conversion
+- **Grade multipliers** (PSA 10: 3.5×, PSA 9: 1.5×, etc.)
+- **Price history** charted per card
+- **Target price alerts** — toast notification when market hits your target
+- **Sold cards** tracking with realised P/L
+- **CSV export** of full collection
+- **Dark / light theme** with persistence
+- **Mobile responsive** with card-list view on small screens
+- **Newcomer tutorial** overlay
+- **Stats page** — portfolio over time, type/grade breakdowns, ROI rankings
