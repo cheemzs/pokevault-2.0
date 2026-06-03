@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PokeVault — Card Tracker</title>
+  <link rel="icon" href="/pfp.jpeg" type="image/jpeg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <div id="toast-container"></div>
+
+  <!-- ── Tutorial overlay ───────────────────────────────────────── -->
+  <div class="tutorial-overlay" id="tutorial-overlay">
+    <div class="tutorial-box" id="tutorial-box">
+      <div class="tutorial-progress" id="tutorial-progress"></div>
+      <div class="tutorial-icon" id="tutorial-icon"></div>
+      <div class="tutorial-content">
+        <h3 class="tutorial-title" id="tutorial-title"></h3>
+        <p class="tutorial-body" id="tutorial-body"></p>
+      </div>
+      <div class="tutorial-footer">
+        <button class="tutorial-skip" onclick="skipTutorial()">Skip tutorial</button>
+        <div class="tutorial-nav">
+          <button class="tutorial-btn tutorial-prev" id="tutorial-prev" onclick="tutorialStep(-1)">← Back</button>
+          <button class="tutorial-btn tutorial-next" id="tutorial-next" onclick="tutorialStep(1)">Next →</button>
+        </div>
+      </div>
+      <div class="tutorial-highlight" id="tutorial-highlight"></div>
+    </div>
+  </div>
+
+  <!-- ── Card detail modal ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+    <div class="modal modal-card-detail" id="card-modal">
+      <button class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('active'); if(priceChart){priceChart.destroy();priceChart=null;}">✕</button>
+      <div class="modal-type-bar" id="modal-type-bar"></div>
+
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="modal-tab-info"  onclick="switchModalTab('info')">Card Info</button>
+        <button class="modal-tab"        id="modal-tab-image" onclick="switchModalTab('image')">Card Image</button>
+      </div>
+
+      <div id="modal-panel-info">
+        <div class="modal-header">
+          <div>
+            <h2 id="modal-name"></h2>
+            <p id="modal-meta"></p>
+          </div>
+          <span class="badge" id="modal-grade"></span>
+        </div>
+
+        <div class="modal-stats">
+          <div class="modal-stat">
+            <div class="modal-stat-label">Purchase price</div>
+            <div class="modal-stat-value" id="modal-cost"></div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">Current value</div>
+            <div class="modal-stat-value" id="modal-value"></div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">Profit / loss</div>
+            <div class="modal-stat-value" id="modal-profit"></div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">Last updated</div>
+            <div class="modal-stat-value" id="modal-updated"></div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">Purchase date</div>
+            <div class="modal-stat-value" id="modal-purchase-date"></div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-label">Target price</div>
+            <div class="modal-stat-value" id="modal-target"></div>
+          </div>
+        </div>
+
+        <div id="modal-notes-wrap" style="display:none; margin-bottom:20px;">
+          <div class="modal-stat-label" style="margin-bottom:6px;">Notes</div>
+          <div id="modal-notes" style="font-size:13px; color:var(--text2); font-family:var(--font-mono); line-height:1.6;"></div>
+        </div>
+
+        <div class="modal-chart-wrap">
+          <p class="modal-chart-label">Value history (SGD)</p>
+          <div class="modal-chart-container">
+            <canvas id="price-chart"></canvas>
+          </div>
+          <p class="modal-chart-empty" id="modal-chart-empty">No price history yet — refresh prices to start tracking</p>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-sell"         onclick="openSellForm()">Mark as sold</button>
+          <button class="btn-manual-price" onclick="openManualPrice()">Set price manually</button>
+          <button class="btn-edit"         onclick="openEditForm()">Edit card</button>
+        </div>
+      </div>
+
+      <div id="modal-panel-image" style="display:none;">
+        <div class="modal-image-tab-wrap">
+          <div id="modal-image-found" style="display:none;">
+            <img id="modal-card-image-large" class="modal-card-image-large" alt="Card art" />
+            <p class="modal-image-caption" id="modal-image-caption"></p>
+          </div>
+          <div id="modal-image-notfound" class="modal-image-notfound">
+            <div style="font-size:48px; margin-bottom:16px;">🔍</div>
+            <p>No card image stored for this card.</p>
+            <p style="font-size:11px; margin-top:8px; color:var(--text3);">Images are saved when you add a card via the picker.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Add-card picker modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="add-picker-overlay">
+    <div class="modal picker-modal picker-mode-add">
+      <button class="modal-close" onclick="closeAddPicker()">✕</button>
+      <h2 class="picker-heading" id="add-picker-title">Select your card</h2>
+      <p class="picker-subheading">Multiple versions found — click the one you own, then confirm below</p>
+      <div class="picker-search-wrap">
+        <span class="picker-search-icon">⌕</span>
+        <input type="text" class="picker-search" id="add-picker-search" placeholder="Filter results…" oninput="filterAddPicker()" />
+      </div>
+      <div class="picker-grid" id="add-picker-grid"></div>
+      <div class="picker-footer">
+        <button class="btn-cancel" onclick="closeAddPicker()">Cancel</button>
+        <button class="btn-primary" id="add-picker-confirm" onclick="confirmAddPicker()" disabled>Add selected card</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Edit modal ─────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="edit-overlay">
+    <div class="modal">
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text);">Edit card</h2>
+      <input type="hidden" id="edit-id" />
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Card name</label>
+          <input type="text" id="edit-name" />
+        </div>
+        <div class="form-group">
+          <label>Set</label>
+          <input type="text" id="edit-set" />
+        </div>
+        <div class="form-group">
+          <label>Card number</label>
+          <input type="text" id="edit-card-number" placeholder="e.g. 199/165 or 44" />
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select id="edit-type">
+            <option value="">Unknown</option>
+            <option value="Fire">🔥 Fire</option>
+            <option value="Water">💧 Water</option>
+            <option value="Grass">🌿 Grass</option>
+            <option value="Electric">⚡ Electric</option>
+            <option value="Psychic">🔮 Psychic</option>
+            <option value="Fighting">🥊 Fighting</option>
+            <option value="Dark">🌑 Dark</option>
+            <option value="Steel">⚙️ Steel</option>
+            <option value="Dragon">🐉 Dragon</option>
+            <option value="Fairy">✨ Fairy</option>
+            <option value="Normal">⭐ Normal</option>
+            <option value="Colorless">🌀 Colorless</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Grade</label>
+          <select id="edit-grade">
+            <option value="raw">Raw</option>
+            <option value="PSA 10">PSA 10</option>
+            <option value="PSA 9">PSA 9</option>
+            <option value="PSA 8">PSA 8</option>
+            <option value="PSA 7">PSA 7</option>
+            <option value="BGS 10">BGS 10</option>
+            <option value="BGS 9.5">BGS 9.5</option>
+            <option value="BGS 9">BGS 9</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" id="edit-quantity" min="1" step="1" />
+        </div>
+        <div class="form-group">
+          <label>Purchase price (SGD)</label>
+          <input type="number" id="edit-price" step="0.01" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Purchase date</label>
+          <input type="date" id="edit-purchase-date" />
+        </div>
+        <div class="form-group">
+          <label>Target sell price (SGD)</label>
+          <input type="number" id="edit-target" step="0.01" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" id="edit-notes" />
+        </div>
+        <div class="form-group">
+          <label>URL</label>
+          <input type="text" id="edit-url" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel"  onclick="closeEditModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveEdit()">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sell modal ─────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="sell-overlay">
+    <div class="modal" style="max-width:420px;">
+      <button class="modal-close" onclick="closeSellModal()">✕</button>
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text);">Mark as sold</h2>
+      <input type="hidden" id="sell-id" />
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group">
+          <label>Sale price (SGD)</label>
+          <input type="number" id="sell-price" step="0.01" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Sale date</label>
+          <input type="date" id="sell-date" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Sold to (optional)</label>
+          <input type="text" id="sell-to" placeholder="Buyer name / platform" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel"  onclick="closeSellModal()">Cancel</button>
+        <button class="btn-primary" onclick="confirmSell()">Confirm sale</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Manual price modal ─────────────────────────────────────── -->
+  <div class="modal-overlay" id="manual-price-overlay">
+    <div class="modal" style="max-width:380px;">
+      <button class="modal-close" onclick="closeManualPriceModal()">✕</button>
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:20px; letter-spacing:0.05em; text-transform:uppercase; color:var(--text);">Set price manually</h2>
+      <input type="hidden" id="manual-price-id" />
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Current value (SGD)</label>
+        <input type="number" id="manual-price-val" step="0.01" min="0" placeholder="0.00" />
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel"  onclick="closeManualPriceModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveManualPrice()">Save price</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Confirm dialog ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="confirm-overlay">
+    <div class="modal confirm-modal">
+      <p class="confirm-message" id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button class="btn-cancel"  id="confirm-cancel">Cancel</button>
+        <button class="btn-danger"  id="confirm-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header class="site-header" id="site-header">
+    <div class="header-inner">
+      <a href="/" class="header-brand">
+        <div class="brand-logo">
+          <img src="/pfp.jpeg" alt="PokeVault Logo" class="brand-logo-img" />
+        </div>
+        <div>
+          <div class="brand-name">PokeVault</div>
+          <div class="brand-sub">Card Portfolio Tracker</div>
+        </div>
+      </a>
+      <nav class="header-nav">
+        <a href="/"           class="nav-link active">Collection</a>
+        <a href="/stats.html" class="nav-link">Stats</a>
+      </nav>
+      <div class="header-right">
+        <div class="header-portfolio">
+          <div class="header-portfolio-value" id="header-value">SGD $0.00</div>
+          <div class="header-portfolio-label">Portfolio value</div>
+        </div>
+        <div class="header-controls">
+          <div class="theme-switcher">
+            <button class="theme-option" data-theme="dark"  onclick="setTheme('dark')"  title="Dark">🌑</button>
+            <button class="theme-option" data-theme="light" onclick="setTheme('light')" title="Light">☀️</button>
+          </div>
+          <label class="color-toggle-label" title="Toggle type colours">
+            <input type="checkbox" id="color-toggle" checked onchange="toggleColors()" />
+            <div class="color-toggle-track"><div class="color-toggle-thumb"></div></div>
+            <span class="color-toggle-text">Colours</span>
+          </label>
+          <span class="header-username" id="username-display"></span>
+          <span id="fx-rate" style="font-size:11px; color:var(--text3); font-family:var(--font-mono);"></span>
+          <button class="logout-btn" onclick="logout()">Log out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- Summary metrics -->
+    <div class="summary-grid">
+      <div class="metric-card">
+        <div class="metric-icon">🃏</div>
+        <div class="metric-body">
+          <div class="metric-label">Total cards</div>
+          <div class="metric-value" id="s-count">0</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">💳</div>
+        <div class="metric-body">
+          <div class="metric-label">Total cost</div>
+          <div class="metric-value" id="s-cost" data-val="0">SGD $0.00</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">📈</div>
+        <div class="metric-body">
+          <div class="metric-label">Portfolio value</div>
+          <div class="metric-value" id="s-value" data-val="0">SGD $0.00</div>
+        </div>
+      </div>
+      <div class="metric-card profit-card">
+        <div class="metric-icon" id="profit-icon">💰</div>
+        <div class="metric-body">
+          <div class="metric-label">Unrealised P/L</div>
+          <div class="metric-value" id="s-profit">—</div>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🏦</div>
+        <div class="metric-body">
+          <div class="metric-label">Realised P/L</div>
+          <div class="metric-value" id="s-realised">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top movers -->
+    <div id="movers-section" style="display:none;">
+      <div class="section-label">Top movers</div>
+      <div class="movers-grid">
+        <div>
+          <div class="movers-col-label gainers-label">↑ Gainers</div>
+          <div class="movers-list" id="movers-gainers"></div>
+        </div>
+        <div>
+          <div class="movers-col-label losers-label">↓ Losers</div>
+          <div class="movers-list" id="movers-losers"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection tabs -->
+    <div class="collection-tabs">
+      <button class="col-tab active" id="tab-active" onclick="switchTab('active')">Active collection</button>
+      <button class="col-tab"        id="tab-sold"   onclick="switchTab('sold')">Sold cards</button>
+    </div>
+
+    <div id="panel-active">
+      <!-- Controls bar -->
+      <div class="controls-bar">
+        <div class="controls-left">
+          <div class="filter-group">
+            <select class="filter-select" id="filter-type"   onchange="applyFilter()">
+              <option value="">All types</option>
+              <option value="Fire">🔥 Fire</option>
+              <option value="Water">💧 Water</option>
+              <option value="Grass">🌿 Grass</option>
+              <option value="Electric">⚡ Electric</option>
+              <option value="Psychic">🔮 Psychic</option>
+              <option value="Fighting">🥊 Fighting</option>
+              <option value="Dark">🌑 Dark</option>
+              <option value="Steel">⚙️ Steel</option>
+              <option value="Dragon">🐉 Dragon</option>
+              <option value="Fairy">✨ Fairy</option>
+              <option value="Normal">⭐ Normal</option>
+              <option value="Colorless">🌀 Colorless</option>
+            </select>
+            <select class="filter-select" id="filter-set" onchange="applyFilter()">
+              <option value="">All sets</option>
+            </select>
+            <select class="filter-select" id="filter-movers" onchange="applyFilter()">
+              <option value="">All cards</option>
+              <option value="gainers">↑ Top gainers</option>
+              <option value="losers">↓ Biggest drops</option>
+            </select>
+          </div>
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search-input" id="search-input" type="text" placeholder="Search cards, sets, numbers…" oninput="applySearch()" />
+          </div>
+        </div>
+        <div class="controls-right">
+          <span class="last-updated" id="last-updated"></span>
+          <button class="btn-refresh" onclick="refreshPrices()">↻ Refresh prices</button>
+          <button class="btn-export"  onclick="exportCSV()" title="Export to CSV">↓ Export</button>
+          <button class="btn-reset"   onclick="resetVault()" title="Delete all cards">⚠ Reset</button>
+          <button class="btn-add"     onclick="toggleForm()">+ Add card</button>
+        </div>
+      </div>
+
+      <!-- Add card form -->
+      <div class="form-card" id="add-form">
+        <div class="form-title">Add new card</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Card name *</label>
+            <input type="text" id="f-name" placeholder="e.g. Misty's Psyduck, Charizard ex" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Card number <span style="color:var(--text3); font-weight:400;">(recommended)</span></label>
+            <input type="text" id="f-card-number" placeholder="e.g. 199/165 or 44 or SWSH001" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Set name <span style="color:var(--text3); font-weight:400;">(optional)</span></label>
+            <input type="text" id="f-set" placeholder="e.g. Obsidian Flames, 151" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="f-type">
+              <option value="">Unknown</option>
+              <option value="Fire">🔥 Fire</option>
+              <option value="Water">💧 Water</option>
+              <option value="Grass">🌿 Grass</option>
+              <option value="Electric">⚡ Electric</option>
+              <option value="Psychic">🔮 Psychic</option>
+              <option value="Fighting">🥊 Fighting</option>
+              <option value="Dark">🌑 Dark</option>
+              <option value="Steel">⚙️ Steel</option>
+              <option value="Dragon">🐉 Dragon</option>
+              <option value="Fairy">✨ Fairy</option>
+              <option value="Normal">⭐ Normal</option>
+              <option value="Colorless">🌀 Colorless</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Grade</label>
+            <select id="f-grade">
+              <option value="raw">Raw</option>
+              <option value="PSA 10">PSA 10</option>
+              <option value="PSA 9">PSA 9</option>
+              <option value="PSA 8">PSA 8</option>
+              <option value="PSA 7">PSA 7</option>
+              <option value="BGS 10">BGS 10</option>
+              <option value="BGS 9.5">BGS 9.5</option>
+              <option value="BGS 9">BGS 9</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" id="f-quantity" placeholder="1" min="1" step="1" value="1" />
+          </div>
+          <div class="form-group">
+            <label>Purchase price (SGD) *</label>
+            <input type="number" id="f-price" placeholder="0.00" step="0.01" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Purchase date</label>
+            <input type="date" id="f-purchase-date" />
+          </div>
+          <div class="form-group">
+            <label>Target sell price (SGD)</label>
+            <input type="number" id="f-target" placeholder="0.00" step="0.01" min="0" />
+          </div>
+          <div class="form-group form-group-promo">
+            <label class="promo-label">
+              <input type="checkbox" id="f-promo" />
+              <span>Promo / variant print</span>
+            </label>
+            <span class="form-hint">Check for Pokemon Center promos, alternate art variants, etc.</span>
+          </div>
+          <div class="form-group full">
+            <label>Notes</label>
+            <input type="text" id="f-notes" placeholder="Condition notes, where bought, etc." />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel"  onclick="toggleForm()">Cancel</button>
+          <button class="btn-primary" id="btn-search-cards" onclick="searchAndPickCard()">Search cards →</button>
+        </div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="table-wrap" id="table-wrap">
+        <table>
+          <colgroup>
+            <col style="width:17%">
+            <col style="width:12%">
+            <col style="width:8%">
+            <col style="width:9%">
+            <col style="width:8%">
+            <col style="width:5%">
+            <col style="width:9%">
+            <col style="width:9%">
+            <col style="width:10%">
+            <col style="width:8%">
+            <col style="width:3%">
+            <col style="width:3%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th onclick="sortBy('name')"          class="sortable">Card <span class="sort-arr">↕</span></th>
+              <th onclick="sortBy('set')"            class="sortable">Set <span class="sort-arr">↕</span></th>
+              <th>Card #</th>
+              <th>Type</th>
+              <th>Grade</th>
+              <th>Qty</th>
+              <th onclick="sortBy('purchasePrice')"  class="sortable">Paid <span class="sort-arr">↕</span></th>
+              <th onclick="sortBy('currentValue')"   class="sortable">Value <span class="sort-arr">↕</span></th>
+              <th onclick="sortBy('profit')"         class="sortable">P/L <span class="sort-arr">↕</span></th>
+              <th onclick="sortBy('lastUpdated')"    class="sortable">Updated <span class="sort-arr">↕</span></th>
+              <th></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="card-table"></tbody>
+        </table>
+      </div>
+      <div class="card-list" id="card-list"></div>
+    </div>
+
+    <div id="panel-sold" style="display:none;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Card</th>
+              <th>Set</th>
+              <th>Card #</th>
+              <th>Grade</th>
+              <th>Paid</th>
+              <th>Sold for</th>
+              <th>P/L</th>
+              <th>Date</th>
+              <th>Sold to</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="sold-table"></tbody>
+        </table>
+      </div>
+      <div class="card-list" id="sold-list"></div>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
