@@ -6,7 +6,7 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt  = require('bcryptjs');
 const { createClient } = require('@supabase/supabase-js');
-
+const pgSession = require('connect-pg-simple')(session);
 // ── Supabase (credentials from env) ──────────────────────────────────────
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -25,12 +25,22 @@ if (!POKEPRICE_API_KEY) {
 // ── App ───────────────────────────────────────────────────────────────────
 const app = express();
 
-app.use(express.json());
+app.set('trust proxy', 1);
 app.use(session({
+  store: new pgSession({
+    conString: process.env.DATABASE_URL,
+    tableName: 'session',
+    createTableIfMissing: true,
+  }),
   secret: process.env.SESSION_SECRET || 'pokevault-fallback-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 },
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax',
+  },
 }));
 
 // ── Auth middleware ───────────────────────────────────────────────────────
