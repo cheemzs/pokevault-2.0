@@ -24,7 +24,7 @@ if (!POKEPRICE_API_KEY) {
 
 // ── App ───────────────────────────────────────────────────────────────────
 const app = express();
-
+app.use(express.json());
 app.set('trust proxy', 1);
 app.use(session({
   store: new pgSession({
